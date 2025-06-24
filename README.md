@@ -139,4 +139,4 @@ pip install -r requirements.txt
 
 ---
 
-**For details, see the notebooks: `Project2_submission.ipynb`, `Project2_1D_CNN.ipynb`, `Project2_Transformers.ipynb`**
+**For details, see the notebooks: `Draft_Project2_submission.ipynb`, `Draft_Project2_1D_CNN.ipynb`, `Draft_Project2_Transformers.ipynb`**
