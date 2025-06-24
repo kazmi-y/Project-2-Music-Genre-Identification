@@ -1,10 +1,10 @@
 # Project-2-Music-Genre-Identification
 
-# Music Genre Classification with Optimized CNN
+# Music Genre Classification with Deep Learning: Model Attempts & Results
 
 ## Project Overview
 
-This repository contains an end-to-end pipeline for music genre classification using an optimized Convolutional Neural Network (CNN). The project utilizes the GTZAN dataset (10 genres, 1000 audio tracks) and leverages advanced audio feature extraction and deep learning techniques to classify genres from audio files.
+This repository contains an end-to-end pipeline for music genre classification using the GTZAN dataset (10 genres, 1000 audio tracks). Multiple deep learning approaches were explored, including classic 2D CNNs, 1D CNNs on raw audio, and hybrid CNN-Transformer models. The goal was to compare architectures, understand their strengths/limitations, and optimize for best accuracy within hardware constraints.
 
 ---
 
@@ -12,28 +12,66 @@ This repository contains an end-to-end pipeline for music genre classification u
 
 - **Dataset:** GTZAN (10 genres: blues, classical, country, disco, hiphop, jazz, metal, pop, reggae, rock)
 - **Samples:** 1000 audio tracks (`.au` format), 100 per genre
-- **Features:** Mel-spectrogram, MFCC, chroma, spectral contrast (stacked and padded)
-- **Input Shape:** (187, 130, 1)
+- **Features:** Mel-spectrogram, MFCC, chroma, spectral contrast (stacked and padded for some models)
+- **Input Shapes:**  
+  - 2D CNN/Transformer: `(187, 130, 1)` or similar  
+  - 1D CNN: `(110250, 1)` (raw waveform, 5 seconds at 22050 Hz)
 - **Split:** 80% training, 20% validation
 
 ---
 
-## Model Architecture
+## Model Attempts and Outcomes
 
-- **Type:** 2D Convolutional Neural Network (CNN)
-- **Layers:** 
-  - 3 × Conv2D + MaxPooling2D + BatchNorm + Dropout
-  - GlobalAveragePooling2D
-  - Dense(256) + BatchNorm + Dropout
-  - Output: Dense(10, softmax)
-- **Regularization:** BatchNorm, Dropout, L2 regularization
-- **Optimizer:** Adam
-- **Loss:** Categorical Crossentropy
-- **Callbacks:** EarlyStopping, ReduceLROnPlateau
+### 1. **2D CNN on MFCC Features**
+- **Approach:** Used MFCC features padded to `(40, 130)` and a simple 2D CNN with two Conv2D layers, MaxPooling, Flatten, and Dense layers.
+- **Result:**  
+  - **Validation Accuracy:** ~35%  
+  - **Macro F1:** ~0.33  
+- **Limitation:**  
+  - Model overfit quickly (train acc >> val acc), and validation accuracy plateaued.
+  - Only MFCCs used; richer features may be needed.
+  - Model was limited in complexity to avoid VRAM issues.
+
+### 2. **2D CNN with Feature Fusion (Mel, MFCC, Chroma, Contrast)**
+- **Approach:** Combined multiple features into a stacked input, used a deeper 2D CNN with BatchNorm, Dropout, and L2 regularization.
+- **Result:**  
+  - **Validation Accuracy:** 61%  
+  - **Macro F1:** 0.59  
+  - **Best Genres:** Classical (F1 0.90), Metal (F1 0.73), Pop (F1 0.70)  
+  - **Challenging Genres:** Disco, Rock
+- **Limitation:**  
+  - **GPU VRAM:** Could not use larger batch sizes or deeper models due to out-of-memory errors.
+  - **Training Speed:** Training was slow with batch size reduced to 8.
+  - **Further scaling (e.g., EfficientNet, more layers) was not possible on available hardware.**
+
+### 3. **1D CNN on Raw Audio**
+- **Approach:** Used a deep 1D CNN (M5-style) directly on normalized raw waveform segments.
+- **Result:**  
+  - **Validation Accuracy:** Peaked at ~17%  
+  - **Observation:** Model struggled to learn meaningful representations from raw audio with limited data and compute.
+- **Limitation:**  
+  - **Data Representation:** Raw audio proved much harder to train on than spectrograms.
+  - **VRAM:** Large input size (110,250 samples per clip) further limited batch size and model depth.
+
+### 4. **Hybrid CNN-Transformer Model**
+- **Approach:** Combined Conv2D feature extraction with Transformer encoder blocks on stacked features.
+- **Result:**  
+  - **Validation Accuracy:** Stuck at 10% (random guess)  
+  - **Observation:** Model failed to learn; likely due to insufficient data, over-parameterization, or sub-optimal hyperparameters.
+- **Limitation:**  
+  - **System:** Transformer blocks require more VRAM and are sensitive to input shape and batch size.
+  - **Data:** 1000 samples may be insufficient for Transformer-based models without augmentation or pretraining.
 
 ---
 
-## Training & Evaluation
+## Hardware Constraints
+
+> **Note:**  
+> The performance of all models was limited by the available GPU VRAM (NVIDIA consumer GPU, 8GB). Due to VRAM constraints, batch size and model complexity had to be reduced, which impacted both training speed and achievable accuracy. Larger batch sizes or deeper models could not be used without causing out-of-memory errors, a common bottleneck in deep learning workflows on consumer GPUs.
+
+---
+
+## Training & Evaluation (Best Model)
 
 - **Epochs:** 50 (with early stopping)
 - **Batch Size:** 8
@@ -60,10 +98,14 @@ This repository contains an end-to-end pipeline for music genre classification u
 
 ---
 
-## Hardware Constraints
+## Summary Table: Model Attempts
 
-> **Note:**  
-> The performance of this model was also limited by the available GPU VRAM. Due to VRAM constraints, batch size and model complexity had to be reduced, which impacted both training speed and achievable accuracy. Larger batch sizes or deeper models could not be used without causing out-of-memory errors, a common bottleneck in deep learning workflows on consumer GPUs[2][3][5].
+| Model/Features         | Max Val Acc | Macro F1 | Main Limitation                |
+|------------------------|-------------|----------|-------------------------------|
+| 2D CNN (MFCC)          | 35%         | 0.33     | Overfit, limited features     |
+| 2D CNN (Feature Fusion)| 61%         | 0.59     | VRAM, batch size, speed       |
+| 1D CNN (Raw Audio)     | 17%         | 0.15     | Data, VRAM, representation    |
+| CNN-Transformer Hybrid | 10%         | 0.10     | Data, VRAM, model size        |
 
 ---
 
@@ -71,40 +113,30 @@ This repository contains an end-to-end pipeline for music genre classification u
 
 1. **Install Requirements**
 
+pip install -r requirements.txt
+
+
 2. **Prepare Data**
 - Place the GTZAN dataset in the `genres/` directory as structured in the notebook.
 
 3. **Run the Notebook**
-- Open `Project2_CNN_optimised.ipynb` in Jupyter or VSCode.
+- Open the desired notebook (e.g., `Project2_submission.ipynb`, `Project2_1D_CNN.ipynb`, or `Project2_Transformers.ipynb`) in Jupyter or VSCode.
 - Execute all cells in order.
 
 4. **Model Output**
-- Trained model saved as `optimized_music_genre_cnn.h5`
+- Trained models saved as `.h5` files
 - Label encoder saved as `label_encoder.pkl`
 
 ---
 
-## Notable Techniques
+## Recommendations & Future Work
 
-- **Feature Fusion:** Combines mel-spectrogram, MFCC, chroma, and spectral contrast for richer input.
-- **Data Normalization & Padding:** Ensures consistent input shapes.
-- **Class Weighting:** Handles class imbalance.
-- **Regularization:** Dropout and BatchNorm reduce overfitting.
-- **Early Stopping & LR Scheduling:** Prevents overfitting and accelerates convergence.
-
----
-
-## License
-
-This repository is for academic use only.
+- **Data Augmentation:** Add pitch/time shift, noise, or mixup for more robust models.
+- **Transfer Learning:** Use pre-trained audio models (e.g., VGGish, YAMNet) for feature extraction.
+- **Ensemble Methods:** Combine predictions from different models.
+- **More VRAM:** Training on larger GPUs would allow deeper models and larger batch sizes for better performance.
+- **Larger Datasets:** Transformers and 1D CNNs especially benefit from more data.
 
 ---
 
-## Acknowledgements
-
-- GTZAN dataset
-- Librosa, Keras, TensorFlow, scikit-learn
-
----
-
-**For details, see the notebook: `Project2_CNN_optimised.ipynb`**  
+**For details, see the notebooks: `Project2_submission.ipynb`, `Project2_1D_CNN.ipynb`, `Project2_Transformers.ipynb`**
